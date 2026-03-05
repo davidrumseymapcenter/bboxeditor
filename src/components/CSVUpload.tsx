@@ -45,13 +45,13 @@ export function CSVUpload({ onUploadComplete }: CSVUploadProps) {
 
         for (const row of results.data) {
           try {
-            const idKey = Object.keys(row).find(key => key.toLowerCase() === 'ckey/hrid');
+            const idKey = Object.keys(row).find(key => key.toLowerCase() === 'ckey/hrid' || key.toLowerCase() === 'hrid');
             const titleKey = Object.keys(row).find(key => key.toLowerCase() === 'title');
             const bboxKey = Object.keys(row).find(key => key === '034' || key === '34');
 
             if (!idKey || !bboxKey) {
               uploadResult.failed++;
-              uploadResult.errors.push(`Row missing required fields (ckey/hrid, 034): ${JSON.stringify(row)}`);
+              uploadResult.errors.push(`Row missing required fields (ckey/hrid or hrid, 034): ${JSON.stringify(row)}`);
               continue;
             }
 
@@ -194,7 +194,7 @@ export function CSVUpload({ onUploadComplete }: CSVUploadProps) {
             {uploading ? 'Uploading...' : isDragging ? 'Drop CSV file here' : 'Click to upload or drag & drop CSV file'}
           </p>
           <p className="text-xs text-gray-500">
-            Required columns: ckey/hrid, 034 — title is optional, all other columns preserved
+            Required columns: ckey/hrid (or hrid), 034 — title is optional, all other columns preserved
           </p>
         </label>
       </div>
