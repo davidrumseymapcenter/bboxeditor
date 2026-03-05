@@ -2,362 +2,166 @@
 
 > 🤖 **AI-Generated Code**: This repository was created with the help of Claude by Anthropic. While the code has been reviewed, it may contain errors or limitations. Use at your own discretion.
 
-A web application for verifying and adjusting MARC 034 bounding box metadata for map records. This tool allows librarians and archivists to upload CSV files containing map metadata, visualize bounding boxes on an interactive map, and make precise adjustments to geographic coordinates.
+A web application for verifying and adjusting MARC 034 bounding box metadata for map records. Upload a CSV containing map catalog records, visualize each bounding box on an interactive map, drag corners to correct coordinates, and export updated MARC 034 and MARC 255 fields.
 
 ## Features
 
-- **Flexible CSV Upload**: Upload any spreadsheet containing `ckey/hrid` and `255` columns
-- **Data Preservation**: All extra columns in your CSV are automatically preserved through editing and export
-- **Interactive Map Visualization**: View bounding boxes on an OpenStreetMap base layer
-- **Drag-to-Adjust**: Modify bounding box corners by dragging markers on the map
-- **MARC 034 Format Support**: Parses and generates MARC 034 coordinate strings
-- **Real-time Coordinate Display**: View decimal degree coordinates as you adjust
-- **Search Functionality**: Filter records by ckey/hrid or title
-- **Export to CSV**: Download edited records with updated bbox values in MARC format
-- **Local Storage**: All data is stored in your browser using IndexedDB (no server required)
+- **CSV Upload**: Drag-and-drop or click to upload; all columns beyond the required ones are preserved through editing and export
+- **Multiple MARC 034 Format Support**: Parses subfield (`$$d`/`$$e`/`$$f`/`$$g`), MARC 255 `$c`, bounding polygon (`$$f` vertex list), and G-polygon (`$$t`/`$$s`) formats
+- **Interactive Map**: View bounding boxes on an OpenStreetMap base layer, automatically zoomed to fit each record
+- **Drag-to-Adjust**: Move corner markers to correct bounding box coordinates
+- **Dual MARC Export**: Exports updated `034` (subfield format) and a generated `255` (`$c` coordinate statement) for adjusted records
+- **Adjustment Persistence**: Previously-adjusted records are preserved when re-importing the source CSV
+- **Search**: Filter the record list by ckey/hrid or title
+- **Local-only**: All data lives in your browser via IndexedDB — nothing is sent to a server
 
-## How It Works
+## CSV Format
 
-### Input Format
+Your CSV must contain these columns (column names are case-sensitive for `034`/`34`):
 
-Your CSV file must contain these columns (case-insensitive):
+| Column | Required | Notes |
+|--------|----------|-------|
+| `ckey/hrid` | Yes (case-insensitive) | Unique record identifier |
+| `034` or `34` | Yes | MARC 034 bounding box coordinates |
+| `title` | No | Record title; shown in the list if present |
 
-- `ckey/hrid`: Unique identifier for each map record (required)
-- `255`: Bounding box coordinates in MARC 034 format (required)
-- `title`: Descriptive title of the map (optional)
+All other columns are preserved as-is in the export.
 
-Example MARC 034 bbox format:
+Rows with a blank `ckey/hrid` or a blank/`N/A` `034` value are silently skipped.
+
+### Supported MARC 034 Input Formats
+
+**Subfield format** (most common):
 
 ```
-$$dW1234567$$eW0987654$$fN0456789$$gN0123456
+$$dW1224800$$eW1214300$$fN0375900$$gN0370400
 ```
 
-Where:
+**MARC 255 `$c` coordinate statement**:
 
-- `$$d` = West longitude
-- `$$e` = East longitude
-- `$$f` = North latitude
-- `$$g` = South latitude
+```
+$c(W 178°26'00"--W 154°45'00"/N 28°31'00"--N 18°51'00")
+```
 
-Coordinates use the format: `[Hemisphere][DDDMMSS]`
+**Bounding polygon** (`$$f` vertex list, semicolon-separated):
 
-- Hemisphere: N/S for latitude, E/W for longitude
-- DDD: Degrees (3 digits)
-- MM: Minutes (2 digits)
-- SS: Seconds (2 digits)
+```
+$$f W 122°13'00"/N 37°04'00" ; W 122°48'00"/N 37°42'00" ; W 122°19'00"/N 37°59'00" ; W 121°43'00"/N 37°21'00"
+```
 
-### Workflow
+**G-polygon** (`$$t`/`$$s` subfields):
 
-1. **Upload**: Drag and drop or select a CSV file
-2. **Review**: Browse through your map records in the left panel
-3. **Visualize**: Select a record to see its bounding box on the map
-4. **Adjust**: Drag the corner markers to modify the bounding box
-5. **Save**: Click "Save Changes" to update the record
-6. **Export**: Download all records as a CSV with updated coordinates
+```
+$$tW1221300$$sN0370400$$tW1224800$$sN0374200$$tW1221900$$sN0375900
+```
 
-## Installation
+## Workflow
+
+1. **Upload** — drag and drop or select a CSV file
+2. **Review** — browse records in the left panel; records show an "Adjusted" badge once edited
+3. **Visualize** — select a record to display its bounding box on the map (map zooms to fit)
+4. **Adjust** — drag the NW, NE, SW, SE corner markers to correct the bounding box
+5. **Save** — click "Save Changes" to persist edits; click "Reset" to revert
+6. **Export** — click "Download CSV" to get all records with updated `034` and `255` values
+
+### Export format
+
+For each record, the export writes:
+
+- `034` — original value for unadjusted records; freshly generated `$$d`/`$$e`/`$$f`/`$$g` for adjusted records
+- `255` — generated `$c` coordinate statement derived from current coordinates (e.g. `$c(W 122°48'00"--W 121°43'00"/N 37°59'00"--N 37°04'00")`)
+- All other original columns — unchanged
+
+Re-importing the exported CSV (or the original source CSV) will not overwrite records that have already been adjusted.
+
+## Development
 
 ### Prerequisites
 
-- Node.js (v18 or higher)
-- npm or yarn
+Node.js v18 or higher.
 
 ### Setup
 
-1. Clone or download the project:
-
 ```bash
 git clone <repository-url>
-cd <project-directory>
-```
-
-2. Install dependencies:
-
-```bash
+cd bboxEditor
 npm install
+npm run dev        # http://localhost:5173
 ```
 
-3. Start the development server:
+### Scripts
 
 ```bash
-npm run dev
+npm run dev          # Development server
+npm run build        # Production build (output: dist/)
+npm run preview      # Preview production build locally
+npm run typecheck    # TypeScript type check
+npm run lint         # ESLint
+npm run test         # Run unit tests (Vitest)
+npm run test:watch   # Run tests in watch mode
 ```
 
-4. Open your browser to `http://localhost:5173`
+### Deployment
 
-## Usage
+The project deploys automatically to GitHub Pages via GitHub Actions on every push to `main`. See [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml).
 
-### Uploading Data
+To deploy manually:
 
-1. Click the upload area or drag a CSV file onto it
-2. The app will validate and parse your data
-3. Successfully imported records appear in the left panel
-4. Any errors are displayed with details
-
-### Editing Bounding Boxes
-
-1. Select a record from the list (left panel)
-2. The map displays the current bounding box with four draggable corner markers:
-   - NW (Northwest)
-   - NE (Northeast)
-   - SW (Southwest)
-   - SE (Southeast)
-3. Drag any corner to adjust the bounding box
-4. Coordinates update in real-time
-5. Click "Save Changes" to persist your edits
-6. Click "Reset" to revert to the original coordinates
-
-### Exporting Data
-
-1. Click "Download CSV" in the header
-2. The exported file includes:
-   - Original column order preserved
-   - Updated bbox values for adjusted records
-   - Original bbox values for unchanged records
-   - All extra columns from your original file
+```bash
+npm run build
+# then serve the dist/ folder from your static host of choice
+```
 
 ## Project Structure
 
 ```
-├── src/
-│   ├── components/
-│   │   ├── CSVUpload.tsx       # File upload with drag-and-drop
-│   │   ├── MapViewer.tsx       # Interactive map with bounding box
-│   │   └── RecordList.tsx      # Searchable list of records
-│   ├── lib/
-│   │   └── db.ts               # IndexedDB database manager
-│   ├── utils/
-│   │   └── marcParser.ts       # MARC 034 coordinate parser
-│   ├── App.tsx                 # Main application component
-│   ├── main.tsx                # Application entry point
-│   └── index.css               # Global styles (Tailwind)
-├── public/                     # Static assets
-├── package.json                # Dependencies and scripts
-├── vite.config.ts              # Vite configuration
-└── tsconfig.json               # TypeScript configuration
+src/
+├── components/
+│   ├── CSVUpload.tsx       # File upload with drag-and-drop, parse & store
+│   ├── MapViewer.tsx       # Leaflet map with draggable bounding box
+│   └── RecordList.tsx      # Searchable, scrollable record list
+├── lib/
+│   └── db.ts               # IndexedDB database manager
+├── utils/
+│   ├── marcParser.ts       # MARC coordinate parser + 034/255 generators
+│   └── marcParser.test.ts  # Parser unit tests
+├── App.tsx                 # Main application layout and state
+├── main.tsx                # Entry point
+└── index.css               # Tailwind global styles
 ```
 
-## Technical Details
+## Tech Stack
 
-### Tech Stack
-
-- **Framework**: React 18 with TypeScript
-- **Build Tool**: Vite
-- **Styling**: Tailwind CSS
-- **Mapping**: Leaflet
-- **CSV Parsing**: PapaParse
-- **Storage**: IndexedDB (browser-based)
-- **Icons**: Lucide React
-
-### Key Components
-
-#### CSVUpload
-
-- Handles file upload via click or drag-and-drop
-- Validates required columns (ID, title, bbox)
-- Parses MARC 034 coordinates
-- Extracts and preserves extra columns
-- Stores records in IndexedDB
-
-#### MapViewer
-
-- Renders interactive map using Leaflet
-- Displays bounding box as a rectangle overlay
-- Provides draggable corner markers
-- Updates coordinates in real-time
-- Handles save/reset operations
-
-#### RecordList
-
-- Displays all imported records
-- Provides search by ID or title
-- Shows adjusted status with visual indicator
-- Highlights selected record
-
-### Data Storage
-
-Records are stored locally in your browser using IndexedDB:
-
-- Database: `MapRecordsDB`
-- Store: `records`
-- Key: `id` field
-- Schema includes all original columns plus parsed coordinates
-
-### Coordinate Conversion
-
-The app converts between two formats:
-
-**MARC 034 Format** (storage/export):
-
-```
-$$dW1234567$$eE0123456$$fN0456789$$gS0123456
-```
-
-**Decimal Degrees** (internal/display):
-
-```
-west: -123.767194
-east: 12.582222
-north: 45.797778
-south: -12.393333
-```
-
-## Exporting to Local Machine
-
-### Method 1: Download from Bolt
-
-1. In Bolt, click the menu icon (three dots) in the top-right
-2. Select "Download as ZIP"
-3. Extract the ZIP file on your local machine
-4. Navigate to the extracted folder
-
-### Method 2: Clone with Git (if connected to GitHub)
-
-```bash
-git clone <your-repo-url>
-cd <project-name>
-```
-
-### Set Up Local Environment
-
-1. Install dependencies:
-
-```bash
-npm install
-```
-
-2. Create a `.env` file in the project root (if needed):
-
-```env
-VITE_SUPABASE_URL=https://eodmykvlqpvdkqaurgrb.supabase.co
-VITE_SUPABASE_ANON_KEY=your-key-here
-```
-
-3. Run the development server:
-
-```bash
-npm run dev
-```
-
-4. Build for production:
-
-```bash
-npm run build
-```
-
-## Bringing Project Back to Bolt
-
-### Method 1: Upload ZIP
-
-1. Create a ZIP file of your entire project folder
-2. Go to Bolt (bolt.new)
-3. Click "Import Project"
-4. Upload your ZIP file
-5. Bolt will restore the project with all your changes
-
-### Method 2: Push to GitHub and Import
-
-1. Initialize git (if not already done):
-
-```bash
-git init
-git add .
-git commit -m "Initial commit"
-```
-
-2. Create a new GitHub repository
-
-3. Push your code:
-
-```bash
-git remote add origin <your-github-repo-url>
-git branch -M main
-git push -u origin main
-```
-
-4. In Bolt, click "Import from GitHub"
-5. Select your repository
-
-### Method 3: Manual File Upload
-
-1. In Bolt, create a new project
-2. Manually upload changed files through the Bolt interface
-3. Bolt will preserve the directory structure
-
-### Important Notes
-
-- The `.env` file is already configured in Bolt with Supabase credentials
-- IndexedDB data (uploaded records) stays in your browser and won't transfer
-- You'll need to re-upload your CSV files in any new environment
-- All dependencies will automatically reinstall when imported to Bolt
-
-## Development Scripts
-
-```bash
-# Start development server
-npm run dev
-
-# Build for production
-npm run build
-
-# Preview production build
-npm run preview
-
-# Run ESLint
-npm run lint
-
-# Type check
-npm run typecheck
-```
-
-## Browser Compatibility
-
-- Chrome/Edge: Full support
-- Firefox: Full support
-- Safari: Full support
-- Mobile browsers: Supported with responsive design
-
-## Data Privacy
-
-All data is stored locally in your browser using IndexedDB. No data is sent to external servers. Your CSV files and edits remain completely private.
+- **React 18** with TypeScript
+- **Vite** build tool
+- **Tailwind CSS**
+- **Leaflet** interactive maps
+- **PapaParse** CSV parsing
+- **IndexedDB** browser-local storage
+- **Vitest** unit testing
 
 ## Troubleshooting
 
-### Upload Fails
+### Upload fails / records not imported
 
-- Ensure your CSV has `ID`, `title`, and `bbox` columns
-- Check that bbox values are in MARC 034 format
-- Verify the CSV is properly formatted (no missing commas)
+- Ensure the CSV has `ckey/hrid` and `034` (or `34`) columns
+- Check that `034` values are in a recognized MARC format (see above)
+- Rows with no ID or no coordinates are silently skipped — verify the source data
 
-### Map Not Displaying
+### Map tiles not showing
 
+- The app requires an internet connection for OpenStreetMap tiles
 - Check browser console for errors
-- Ensure you have an internet connection (for map tiles)
-- Try refreshing the page
 
-### Records Not Saving
+### Records not saving
 
-- Check browser console for IndexedDB errors
-- Ensure you're not in private/incognito mode (may restrict storage)
-- Try clearing browser cache and reloading
+- IndexedDB may be restricted in private/incognito mode
+- Check the browser console for storage errors
 
-### Export Missing Columns
+## Data Privacy
 
-- Verify columns were present in the original upload
-- Check that column names don't conflict with reserved fields
-
-## Future Enhancements
-
-Potential features for future development:
-
-- Batch editing capabilities
-- Multiple bounding box format support
-- Historical map overlay support
-- Coordinate system transformations
-- Undo/redo functionality
-- Cloud storage integration
-- Collaborative editing
+All data is stored locally in your browser (IndexedDB). Nothing is sent to any external server. Your CSV files and edits remain entirely private.
 
 ## Contributing
 
-For those of you interested in improving this application, please open a new pull request or submit a new issue with your comments and suggestions.
+Open a pull request or submit an issue with comments and suggestions.
